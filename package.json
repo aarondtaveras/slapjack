@@ -22,7 +22,7 @@
     "typescript": "^3.7.5"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "docker run -d -it -p 1883:1883 -p 9001:9001 eclipse-mosquitto; react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
