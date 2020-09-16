@@ -1,4 +1,4 @@
-import { Card, CardState } from '../Card/';
+import { CardState } from '../Card/';
 
 export interface IRoundState {
   cards: JSX.Element[];

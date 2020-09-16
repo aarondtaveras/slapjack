@@ -6,7 +6,6 @@ import { Round } from '../Round/Round';
 import { connect, MqttClient } from 'mqtt';
 
 export class Game extends Component<IGameProps, IGameState> {
-  private cards: JSX.Element[]=[];
   round: Round;
   players: Player[];
   topic: Topic;
@@ -17,19 +16,21 @@ export class Game extends Component<IGameProps, IGameState> {
     const baseTopic: string = "slapjack/1234";
     this.topic = new Topic(baseTopic);
     this.players = [];
-    
-    this.round = new Round({ players: this.players });
+
     const mqttUrl: string = "ws://40.76.170.92/";
     const port: number = 80;
     console.log("connecting to " + mqttUrl + ":" + port.toString());
     this.client = connect(mqttUrl, {"port": port});
+    this.round = new Round({
+      client: this.client,
+      players: this.players
+    });
   }
 
   handleNewPlayer = (topic: string, message: string) => {
     console.log("handle new player");
     this.round.players = [new Player("aaron")];
     this.client.publish(this.topic.oldPlayers, JSON.stringify(new Player("aaron")));
-    // this.client.publish(this.topic.shuffle, JSON.stringify(this.state.cardStates));
   }
 
   handleOldPlayers = (topic: string, message: string) => {
@@ -50,8 +51,6 @@ export class Game extends Component<IGameProps, IGameState> {
     this.client.subscribe(this.topic.baseTopic);
     this.client.subscribe(this.topic.joinGame);
     this.client.subscribe(this.topic.oldPlayers);
-    this.client.subscribe(this.topic.pickCard);
-    this.client.subscribe(this.topic.shuffle);
     this.client.on("message", (topic: string, message: Buffer) => {
       switch (topic) {
         case this.topic.joinGame:
@@ -60,12 +59,6 @@ export class Game extends Component<IGameProps, IGameState> {
         case this.topic.oldPlayers:
           this.handleOldPlayers(topic, message.toString());
           break;
-        // case this.topic.pickCard:
-        //   this.handlePickCard(topic, message.toString());
-        //   break;
-        // case this.topic.shuffle:
-        //   this.handleShuffle(topic, message.toString());
-        //   break;
       }
     })
   }
@@ -73,12 +66,13 @@ export class Game extends Component<IGameProps, IGameState> {
   componentDidMount() {
     this.connectMqtt(this.topic.baseTopic);
     this.client.publish(this.topic.joinGame, JSON.stringify("aaron"));
+    this.client.publish(this.topic.joinGame, JSON.stringify("dan"));
   }
 
   render() {
     return (
       <div className="game-container">
-        <Round players={[new Player("aaron")]} />
+        <Round client={this.client} players={[new Player("aaron"), new Player("dan")]} />
       </div>
     );
   }

@@ -13,7 +13,7 @@ export class Card extends React.Component<ICardProps, ICardState> {
   private backSrc: string = back;
   private cardImages: CardImages;
 
-  constructor(props: ICardProps, cardImages: CardImages) {
+  constructor(props: ICardProps) {
     super(props)
     this.cardImages = new CardImages();
   }

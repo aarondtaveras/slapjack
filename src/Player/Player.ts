@@ -1,4 +1,4 @@
-import { Card } from '../Card/Card';
+import { Card, CardState, CardImages } from '../Card';
 
 export class Player {
     name : string;
@@ -7,6 +7,13 @@ export class Player {
 
     constructor(name: string) {
         this.name = name;
+    }
+
+    createHand(cardStates: CardState[]) {
+        this.hand = cardStates.map(cardState => new Card({
+            cardState, 
+            onClick: ()=>{} 
+        }));
     }
 
     equals(otherPlayer: Player): boolean {
