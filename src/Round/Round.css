@@ -3,3 +3,14 @@
     margin-left: 50%;
     height: auto;
 }
+
+.player-zone {
+    display: flex;
+}
+
+.hand-count {
+    margin: auto 0;
+    background-color: #cecece;
+    padding: 10px;
+    font-weight: bold;
+}

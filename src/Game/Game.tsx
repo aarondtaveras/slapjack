@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import { IGameProps, IGameState, Topic } from './';
-import { Suit, Card, CardState } from '../Card';
 import { Player } from '../Player/Player';
 import { Round } from '../Round/Round';
 import { connect, MqttClient } from 'mqtt';
@@ -42,7 +41,7 @@ export class Game extends Component<IGameProps, IGameState> {
         return;
       }
     }
-    this.round.addPlayer(oldPlayer);
+    // this.round.addPlayer(oldPlayer);
     console.log("setting state");
     this.setState({});
   }

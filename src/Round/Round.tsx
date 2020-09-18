@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Player } from '../Player/Player';
-import { Suit, Card, CardImages, CardState } from '../Card';
+import { Suit, Card, CardState } from '../Card';
 import { IRoundProps } from './IRoundProps';
 import { IRoundState} from './IRoundState';
 import './Round.css';
@@ -8,63 +8,77 @@ import classNames from 'classnames/bind';
 import { MqttClient } from 'mqtt';
 
 export class Round extends Component<IRoundProps, IRoundState> {
-    players: Player[] = this.props.players;
     client: MqttClient = this.props.client;
-    cards: JSX.Element[] = [];
+    players: Player[] = this.props.players;
     cardStates: CardState[] = [];
-    turn: number = 0;
     isJack: boolean = false;
     created: number = Date.now();
+    playerTurn: number = 0;
 
     constructor(props: IRoundProps) {
         super(props);
         this.state = {
-            cards: this.cards,
-            topCard: this.cards[0],
-            cardStates: this.cardStates,
-            playerTurn: 0
+            gameStarted: false,
+            gameOver: false,
+            topCard: null,
+            players: this.players,
         }
 
-        this.dealInPlayers = this.dealInPlayers.bind(this);
+        this.handleStart = this.handleStart.bind(this);
         this.handleSlap = this.handleSlap.bind(this);
+        this.dealInPlayers = this.dealInPlayers.bind(this);
     }
 
     componentDidMount() {
         this.initDeck();
     }
 
-    shuffleDeck() {
-        const shuffledStates = this.state.cardStates.sort(() => Math.random() - 0.5);
-        const shuffledCards = shuffledStates.map(cardState => <Card cardState={cardState} onClick={()=>{}} />);
-        this.setState({
-            cardStates: shuffledStates,
-            cards: shuffledCards,
-            topCard: shuffledCards[0]
-        });
-        this.isJack = this.state.cardStates[0].value === 11;
+    handleGameOver() {
+        // send event to mqtt
+        this.setState({ gameOver : true });
     }
 
     handleSlap() {
         // send slap event to mqtt
+        let { players, playerTurn, cardStates } = this;
         if (this.isJack) {
-            console.log('JACK HAS BEEN SLAPDEDEDED');
+            let currentHand: CardState[] = players[playerTurn].hand;
+            currentHand = this.shuffleDeck([...currentHand, ...cardStates]);
+            if (currentHand.length === 52) {
+                this.handleGameOver();
+            } else {
+                players[playerTurn].hand = currentHand;
+                const topCard: CardState = players[playerTurn].hand[0];
+                cardStates = [topCard];
+                this.setState({
+                    topCard: <Card cardState={topCard} onClick={this.handleSlap} />
+                });
+            }
         } else {
             console.log('jack has not been slappededed');
         }
     }
 
-    dealInPlayers() {
-        let startIdx: number = 1;
-        const cardsPerPlayer: number = Math.floor(52/(this.players.length));
-        let endIdx: number = cardsPerPlayer;
-        this.players.forEach((player, idx) => {
-            player.createHand(this.state.cardStates.slice(startIdx, endIdx));
-            startIdx += cardsPerPlayer;
-            endIdx = idx === this.players.length - 1 ? 51 : endIdx + cardsPerPlayer;  
+    handleFlip(player: Player) {
+        if (!this.state.gameStarted) {
+            alert(`If ya wanna play, start the game ${player.name}!`);
+        }
+        else if (player.equals(this.players[this.playerTurn])) {
+            const topCard: CardState = player.hand[0];
+            player.hand = player.hand.slice(1);
+            this.isJack = topCard.value === 11;
+            this.playerTurn = (this.playerTurn + 1) % this.players.length;
+            this.cardStates.push(topCard);
+            this.setState({
+                topCard: <Card cardState={topCard} onClick={this.handleSlap}/>
+            });
+        } else alert(`Wait your turn, ${player.name} :)`);
+    }
+
+    handleStart() {
+        this.setState({ gameStarted: true }, () => {
+            this.dealInPlayers();
         });
-        this.players.forEach((player) => {
-            console.log(player.hand);
-        })
     }
 
     initDeck() {
@@ -76,35 +90,70 @@ export class Round extends Component<IRoundProps, IRoundState> {
                 cardStates.push(cardState);
             }
         }
-        // shuffle the deck
-        cardStates.sort(()=> Math.random() - 0.5);
-        const cards: JSX.Element[] = cardStates.map(cardState => <Card cardState={cardState} onClick={this.handleSlap}/>);
-        this.setState({
-            cardStates,
-            cards,
-            topCard: cards[0]
-        }, () => {
-            this.isJack = this.state.cardStates[0].value === 11;
+        this.cardStates = this.shuffleDeck(cardStates);
+    }
+    
+    dealInPlayers() {
+        let startIdx: number = 0;
+        const cardsPerPlayer: number = Math.floor(52/(this.players.length));
+        let endIdx: number = cardsPerPlayer;
+        let newStates: CardState[] = [];
+        this.players.forEach((player, idx) => {
+            player.hand = this.cardStates.slice(startIdx, idx === this.players.length - 1 ? 52 : endIdx);
+            startIdx += cardsPerPlayer;
+            endIdx += cardsPerPlayer;
+            newStates = [...this.cardStates.slice(endIdx)];
         });
+
+        this.cardStates = newStates;
+        this.handleFlip(this.players[this.playerTurn]);
+    }
+    
+    shuffleDeck(cardStates: CardState[]) {
+        return cardStates.sort(() => Math.random() - 0.5);
     }
 
-    addPlayer(oldPlayer: Player) {
-        this.players.push(oldPlayer);
-        this.players.sort((p1, p2) => {
-            return p1.created - p2.created;
-        });
+    renderGameOver() {
+        const { players, playerTurn } = this;
+        return (
+            <div>
+                <h1> Game over! {players[playerTurn].name} won!</h1>
+            </div>
+        );
+    }
+
+    renderGame() {
+        const { players, playerTurn } = this;
+        const { gameStarted, topCard } = this.state;
+        return (
+            <div>
+                <h1>Players: {players.map(player=> `${player.name}\n`)}</h1>
+                { !gameStarted && <button onClick={this.handleStart}>Start!</button> }
+                <div className="card-table">
+                    {topCard}
+                </div>
+                <div>
+                { gameStarted && <h2>It's {players[playerTurn].name}'s turn</h2>}
+                {players.map((player) => {
+                    return (
+                        <div className="player-zone" key={player.name}>
+                            <Card cardState={new CardState(1,Suit.spades, false, false)} onClick={()=> {
+                                this.handleFlip(player);
+                            }}/>
+                            <span className="hand-count">{`${player.name} \n ${player.hand.length}`}</span>
+                        </div>
+                    );
+                })}
+                </div>
+            </div>
+        )
     }
 
     render() {
-        const { players } = this.props;
-        const { topCard } = this.state;
+        const { gameOver } = this.state;
         return (
         <div>
-            <h1>Players: {players.map(player=> `${player.name}\n`)}</h1>
-            <button onClick={this.dealInPlayers}>Start!</button>
-            <div className="card-table">
-                {topCard}
-            </div>
+            { gameOver ? this.renderGameOver() : this.renderGame() }
         </div>
         );
     }

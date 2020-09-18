@@ -1,8 +1,9 @@
 import { CardState } from '../Card/';
+import { Player } from '../Player/Player';
 
 export interface IRoundState {
-  cards: JSX.Element[];
-  cardStates: CardState[],
-  topCard: JSX.Element,
-  playerTurn: number
+  gameStarted: boolean,
+  gameOver: boolean,
+  players: Player[],
+  topCard: JSX.Element | null
 }

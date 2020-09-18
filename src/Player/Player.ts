@@ -2,18 +2,12 @@ import { Card, CardState, CardImages } from '../Card';
 
 export class Player {
     name : string;
-    hand: Card[] = [];
+    hand: CardState[] = [];
     created: number = Date.now();
 
-    constructor(name: string) {
+    constructor(name: string, hand: CardState[] = []) {
         this.name = name;
-    }
-
-    createHand(cardStates: CardState[]) {
-        this.hand = cardStates.map(cardState => new Card({
-            cardState, 
-            onClick: ()=>{} 
-        }));
+        this.hand = hand;
     }
 
     equals(otherPlayer: Player): boolean {
